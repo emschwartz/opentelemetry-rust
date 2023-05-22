@@ -317,31 +317,29 @@ impl BaseInstrument {
             instrument_hash: hasher.finish(),
         };
         let current = &self.meter.0.current;
-        if let Some(existing_record) = current.get(&map_key) {
-            return existing_record.value().clone();
-        }
-
-        let record = Arc::new(Record {
-            update_count: NumberKind::U64.zero().to_atomic(),
-            collected_count: NumberKind::U64.zero().to_atomic(),
-            attributes: AttributeSet::from_attributes(kvs.iter().cloned()),
-            instrument: self.clone(),
-            current: self
-                .meter
-                .0
-                .processor
-                .aggregator_selector()
-                .aggregator_for(&self.descriptor),
-            checkpoint: self
-                .meter
-                .0
-                .processor
-                .aggregator_selector()
-                .aggregator_for(&self.descriptor),
-        });
-        current.insert(map_key, record.clone());
-
-        record
+        current
+            .entry(map_key)
+            .or_insert_with(|| {
+                Arc::new(Record {
+                    update_count: NumberKind::U64.zero().to_atomic(),
+                    collected_count: NumberKind::U64.zero().to_atomic(),
+                    attributes: AttributeSet::from_attributes(kvs.iter().cloned()),
+                    instrument: self.clone(),
+                    current: self
+                        .meter
+                        .0
+                        .processor
+                        .aggregator_selector()
+                        .aggregator_for(&self.descriptor),
+                    checkpoint: self
+                        .meter
+                        .0
+                        .processor
+                        .aggregator_selector()
+                        .aggregator_for(&self.descriptor),
+                })
+            })
+            .clone()
     }
 }
 
